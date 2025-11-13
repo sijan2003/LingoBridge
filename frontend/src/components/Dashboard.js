@@ -2,7 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 import { Link } from 'react-router-dom';
-import { getWebSocketURL, createWebSocket } from '../utils/websocket';
+import { getWebSocketURL, createWebSocket } from '../lib/websocket';
 
 const Dashboard = () => {
   const [user, setUser] = useState(null);

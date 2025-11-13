@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import axios from 'axios';
 import { useParams } from 'react-router-dom';
-import { getWebSocketURL, createWebSocket } from '../utils/websocket';
+import { getWebSocketURL, createWebSocket } from '../lib/websocket';
 
 const Chat = () => {
   const { friendId } = useParams();
