@@ -1,14 +1,8 @@
 from django.db import models
-from django.contrib.auth.models import AbstractUser
 from django.db.models import Q
+from django.contrib.auth import authenticate, get_user_model
+User = get_user_model()
 
-class User(AbstractUser):
-    preferred_language = models.CharField(
-        max_length=5,
-        choices=(('en', 'English'), ('fr', 'French'), ('es', 'Spanish')),
-        default='en'
-    )
-    # Comments: Preferred language for receiving translations. Sending defaults to this but can be detected.
 
 class Friendship(models.Model):
     from_user = models.ForeignKey(User, related_name='friend_requests_sent', on_delete=models.CASCADE)
@@ -24,9 +18,8 @@ class Friendship(models.Model):
 class Message(models.Model):
     sender = models.ForeignKey(User, related_name='messages_sent', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='messages_received', on_delete=models.CASCADE)
-    content = models.TextField()  # Original content from sender
-    translated_content = models.TextField()  # Translated to receiver's preferred language at send time
+    content = models.TextField()
+    translated_content = models.TextField()
     original_language = models.CharField(max_length=5)
     timestamp = models.DateTimeField(auto_now_add=True)
 
-    # Comments: Stores messages with original and translated versions for personalized display.

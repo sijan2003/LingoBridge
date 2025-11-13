@@ -4,21 +4,55 @@ import Signup from './components/Signup';
 import UserList from './components/UserList';
 import Dashboard from './components/Dashboard';
 import Chat from './components/Chat';
+import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
-    <Router>
-      <div className="min-vh-100 bg-light">
-        <Routes>
-          <Route path="/login" element={<Login />} />
-          <Route path="/signup" element={<Signup />} />
-          <Route path="/users" element={<UserList />} />
-          <Route path="/dashboard" element={<Dashboard />} />
-          <Route path="/chat/:friendId" element={<Chat />} />
-          <Route path="/" element={<Login />} />
-        </Routes>
-      </div>
-    </Router>
+      <Router>
+        <div className="min-vh-100 bg-light">
+          <Routes>
+
+            <Route path="/login" element={<Login />} />
+            <Route path="/signup" element={<Signup />} />
+
+
+            <Route
+                path="/dashboard"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/users"
+                element={
+                  <ProtectedRoute>
+                    <UserList />
+                  </ProtectedRoute>
+                }
+            />
+            <Route
+                path="/chat/:friendId"
+                element={
+                  <ProtectedRoute>
+                    <Chat />
+                  </ProtectedRoute>
+                }
+            />
+
+
+            <Route
+                path="/"
+                element={
+                  <ProtectedRoute>
+                    <Dashboard />
+                  </ProtectedRoute>
+                }
+            />
+          </Routes>
+        </div>
+      </Router>
   );
 }
 
