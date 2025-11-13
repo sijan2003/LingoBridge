@@ -11,6 +11,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 """
 
 from pathlib import Path
+from decouple import config
 import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
@@ -41,8 +42,10 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'rest_framework',
+    'rest_framework_simplejwt',
     'channels',
     'app',
+    'user',
     'corsheaders',
 ]
 
@@ -80,10 +83,27 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
+DB_ENGINE = config("DB_ENGINE", default='django.db.backends.sqlite3')
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': BASE_DIR / 'db.sqlite3',
+        'ENGINE': DB_ENGINE,
+        'NAME': config("DB_NAME", default=BASE_DIR / "db.sqlite3"),
+        'USER': config("DB_USER", default=""),
+        'PASSWORD': config("DB_PASSWORD", default=""),
+        "HOST": config("DB_HOST", default=""),
+        "PORT": config("DB_PORT", cast=int, default=""),
+    }
+}
+DB_ENGINE = config("DB_ENGINE", default="django.db.backends.postgresql")
+
+DATABASES = {
+    "default": {
+        "ENGINE": DB_ENGINE,
+        "NAME": config("DB_NAME", default="lingobridge"),
+        "USER": config("DB_USER", default="postgres"),
+        "PASSWORD": config("DB_PASSWORD", default="dbms@123"),
+        "HOST": config("DB_HOST", default="localhost"),
+        "PORT": config("DB_PORT", cast=int, default=5432),
     }
 }
 
@@ -128,13 +148,27 @@ STATIC_URL = 'static/'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
-AUTH_USER_MODEL = 'app.User'
+AUTH_USER_MODEL = "user.CustomUser"
 
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': (
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 }
+from datetime import timedelta
+SIMPLE_JWT = {
+    "ACCESS_TOKEN_LIFETIME": timedelta(
+        minutes=config("ACCESS_TOKEN_LIFETIME_MINUTES", default=555555, cast=int)
+    ),
+    "REFRESH_TOKEN_LIFETIME": timedelta(
+        minutes=config("REFRESH_TOKEN_LIFETIME_MINUTES", default=555555, cast=int)
+    ),
+    "ROTATE_REFRESH_TOKENS": True,
+    "ALGORITHM": "HS256",
+    "SIGNING_KEY": SECRET_KEY,
+}
+
+
 # For Channels (in-memory layer for local dev)
 CHANNEL_LAYERS = {
     'default': {
@@ -145,6 +179,7 @@ ASGI_APPLICATION = 'backend.asgi.application'
 
 # CORS settings - restrict in production
 CORS_ALLOW_ALL_ORIGINS = DEBUG
+CORS_ALLOW_CREDENTIALS = True
 if not DEBUG:
     CORS_ALLOWED_ORIGINS = os.environ.get('CORS_ALLOWED_ORIGINS', 'http://localhost:3000').split(',')
 

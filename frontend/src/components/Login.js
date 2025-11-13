@@ -1,11 +1,13 @@
-import React, { useState } from 'react';
-import axios from 'axios';
+import React, {useContext, useState} from 'react';
 import { useNavigate } from 'react-router-dom';
 import {Card} from "./ui/card";
 import { Input } from "./ui/input";
 import { Button } from "./ui/button";// relative path
-import {Mail, Lock, Chrome , Facebook} from "lucide-react";
+import {UserPen , Lock, Chrome , Facebook} from "lucide-react";
 import { Link } from "react-router-dom";
+import { AuthContext } from "../context/AuthContext";
+import {getProfile , loginUser} from "../utils/authService";
+import {useLogin} from "../hooks/useLogin";
 
 
 
@@ -17,25 +19,25 @@ const Login = () => {
   const [error, setError] = useState(null);
   const [email, setEmail] = useState("");
   const [isLoading , setIsLoading] = useState(false);
+  const { setUser } = useContext(AuthContext);
+  const { login, setLoginUser } = useLogin();
   const handleSubmit = async (e) => {
     e.preventDefault();
+
     if (!username.trim() || !password.trim()) {
-      alert('Please enter both username and password');
+      alert("Please enter both username and password");
       return;
     }
+    console.log("username-password",username , password);
     try {
-      const res = await axios.post('/api/token/', { username, password });
-      if (res.data.access) {
-        localStorage.setItem('token', res.data.access);
-        navigate('/dashboard');
-      } else {
-        alert('Invalid response from server');
-      }
+      await login(username, password);
+      const userProfile = getProfile()
+      setUser(userProfile); // update AuthContext
     } catch (err) {
-      const errorMsg = err.response?.data?.detail || err.response?.data?.error || 'Login failed. Please check your credentials.';
-      alert(errorMsg);
+      console.log(err.message); // error handled in hook
     }
   };
+
 
   return (
       // <div className="d-flex justify-content-center align-items-center vh-100">
@@ -82,17 +84,16 @@ const Login = () => {
                 <div className="space-y-2">
                   <label htmlFor="email" className="block flex
                    gap-2 text-sm font-medium text-slate-200">
-                    Email Address <Mail
-                      className=" w-5 h-5 text-slate-500"/>
+                    Username <UserPen  className=" w-5 h-5 text-slate-500"/>
                   </label>
                   <div className="relative">
 
                     <Input
-                        id="email"
-                        type="email"
-                        placeholder="you@example.com"
-                        value={email}
-                        onChange={(e) => setEmail(e.target.value)}
+                        id="username"
+                        type="text"
+                        placeholder="Enter Your Username"
+                        value={username}
+                        onChange={(e) => setUsername(e.target.value)}
                         className="pl-10 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/50"
                         disabled={isLoading}
                     />
