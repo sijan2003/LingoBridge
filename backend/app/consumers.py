@@ -141,15 +141,19 @@ class ChatConsumer(AsyncWebsocketConsumer):
         self.user = self.scope.get('user')
         
         if not self.user:
+            print("WebSocket connection rejected: No user found in scope")
             await self.close(code=4001)  # Unauthorized
             return
         
+        print(f"WebSocket connection accepted for user: {self.user.username} (ID: {self.user.id})")
         await self.accept()
         self.room_group_name = f'user_{self.user.id}'
         await self.channel_layer.group_add(self.room_group_name, self.channel_name)
+        print(f"User {self.user.username} added to room group: {self.room_group_name}")
 
     async def disconnect(self, close_code):
         if hasattr(self, 'room_group_name'):
+            print(f"WebSocket disconnected for user {self.user.username if self.user else 'unknown'}, close_code: {close_code}")
             await self.channel_layer.group_discard(self.room_group_name, self.channel_name)
 
     async def receive(self, text_data):

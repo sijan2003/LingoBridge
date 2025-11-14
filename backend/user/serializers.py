@@ -1,7 +1,5 @@
 from rest_framework import serializers
 from .models import CustomUser
-from django.contrib.auth import authenticate
-from rest_framework import serializers
 from django.contrib.auth import authenticate, get_user_model
 from rest_framework_simplejwt.tokens import RefreshToken
 
@@ -59,9 +57,24 @@ class CustomTokenObtainPairSerializer(serializers.Serializer):
 
 class RegisterSerializer(serializers.ModelSerializer):
     password = serializers.CharField(style={'input_type': 'password'}, write_only=True)
+    first_name = serializers.CharField(required=False, allow_blank=True)
+    last_name = serializers.CharField(required=False, allow_blank=True)
+    phone_number = serializers.CharField(required=False, allow_blank=True)
+    preferred_language = serializers.CharField(required=False, default='en')
+    gender = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    address = serializers.CharField(required=False, allow_blank=True, allow_null=True)
+    
     class Meta:
         model = CustomUser
         fields = ['username', 'email', 'first_name', 'last_name','phone_number', 'password', 'preferred_language', 'gender', 'address']
-        def create(self, validated_data):
-            user = CustomUser.objects.create_user(**validated_data)
-            return user
+    
+    def create(self, validated_data):
+        password = validated_data.pop('password')
+        # Set default phone_number if not provided
+        if 'phone_number' not in validated_data or not validated_data['phone_number']:
+            validated_data['phone_number'] = ''
+        # Set default preferred_language if not provided
+        if 'preferred_language' not in validated_data or not validated_data['preferred_language']:
+            validated_data['preferred_language'] = 'en'
+        user = CustomUser.objects.create_user(password=password, **validated_data)
+        return user

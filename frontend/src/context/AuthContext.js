@@ -10,11 +10,19 @@ export const AuthProvider = ({ children }) => {
     const loadUser = async () => {
         try {
             const token = localStorage.getItem("access_token");
-            if (!token) return;
+            if (!token) {
+                setUser(null);
+                setLoading(false);
+                return;
+            }
             const response = await getProfile();
             setUser(response.data);
         } catch (err) {
+            console.error("Failed to load user:", err);
             setUser(null);
+            // Clear invalid tokens
+            localStorage.removeItem("access_token");
+            localStorage.removeItem("refresh_token");
         } finally {
             setLoading(false);
         }
@@ -27,8 +35,11 @@ export const AuthProvider = ({ children }) => {
     };
 
     useEffect(() => {
-        console.log("🔍 Current user:", user);
-        console.log("🔍 Token:", localStorage.getItem("access_token"));
+        // Only log when in development and user/token exists
+        if (process.env.NODE_ENV === 'development' && (user || localStorage.getItem("access_token"))) {
+            console.log("🔍 Current user:", user);
+            console.log("🔍 Token:", localStorage.getItem("access_token") ? "Present" : "Missing");
+        }
     }, [user]);
 
 

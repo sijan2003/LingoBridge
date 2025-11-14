@@ -13,6 +13,7 @@ https://docs.djangoproject.com/en/5.2/ref/settings/
 from pathlib import Path
 from decouple import config
 import os
+from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -83,29 +84,31 @@ WSGI_APPLICATION = 'backend.wsgi.application'
 # Database
 # https://docs.djangoproject.com/en/5.2/ref/settings/#databases
 
-DB_ENGINE = config("DB_ENGINE", default='django.db.backends.sqlite3')
-DATABASES = {
-    'default': {
-        'ENGINE': DB_ENGINE,
-        'NAME': config("DB_NAME", default=BASE_DIR / "db.sqlite3"),
-        'USER': config("DB_USER", default=""),
-        'PASSWORD': config("DB_PASSWORD", default=""),
-        "HOST": config("DB_HOST", default=""),
-        "PORT": config("DB_PORT", cast=int, default=""),
-    }
-}
 DB_ENGINE = config("DB_ENGINE", default="django.db.backends.postgresql")
 
-DATABASES = {
-    "default": {
-        "ENGINE": DB_ENGINE,
-        "NAME": config("DB_NAME", default="lingobridge"),
-        "USER": config("DB_USER", default="postgres"),
-        "PASSWORD": config("DB_PASSWORD", default="dbms@123"),
-        "HOST": config("DB_HOST", default="localhost"),
-        "PORT": config("DB_PORT", cast=int, default=5432),
+# Use PostgreSQL by default, fallback to SQLite if not configured
+if DB_ENGINE == "django.db.backends.postgresql":
+    DATABASES = {
+        "default": {
+            "ENGINE": DB_ENGINE,
+            "NAME": config("DB_NAME", default="lingobridge"),
+            "USER": config("DB_USER", default="postgres"),
+            "PASSWORD": config("DB_PASSWORD", default="dbms@123"),
+            "HOST": config("DB_HOST", default="localhost"),
+            "PORT": config("DB_PORT", cast=int, default=5432),
+        }
     }
-}
+else:
+    DATABASES = {
+        'default': {
+            'ENGINE': DB_ENGINE,
+            'NAME': config("DB_NAME", default=BASE_DIR / "db.sqlite3"),
+            'USER': config("DB_USER", default=""),
+            'PASSWORD': config("DB_PASSWORD", default=""),
+            "HOST": config("DB_HOST", default=""),
+            "PORT": config("DB_PORT", cast=int, default=""),
+        }
+    }
 
 
 # Password validation
@@ -155,19 +158,20 @@ REST_FRAMEWORK = {
         'rest_framework_simplejwt.authentication.JWTAuthentication',
     ),
 }
-from datetime import timedelta
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(
-        minutes=config("ACCESS_TOKEN_LIFETIME_MINUTES", default=555555, cast=int)
-    ),
-    "REFRESH_TOKEN_LIFETIME": timedelta(
-        minutes=config("REFRESH_TOKEN_LIFETIME_MINUTES", default=555555, cast=int)
-    ),
-    "ROTATE_REFRESH_TOKENS": True,
-    "ALGORITHM": "HS256",
-    "SIGNING_KEY": SECRET_KEY,
+    'ACCESS_TOKEN_LIFETIME': timedelta(minutes=5),
+    'REFRESH_TOKEN_LIFETIME': timedelta(days=1),
+    'ROTATE_REFRESH_TOKENS': False,
+    'BLACKLIST_AFTER_ROTATION': False,
+    'UPDATE_LAST_LOGIN': False,
+    'ALGORITHM': 'HS256',
+    'SIGNING_KEY': SECRET_KEY,
+    'VERIFYING_KEY': None,
+    'AUDIENCE': None,
+    'ISSUER': None,
+    'JTI_CLAIM': 'jti',
+    'TOKEN_TYPE_CLAIM': 'token_type',
 }
-
 
 # For Channels (in-memory layer for local dev)
 CHANNEL_LAYERS = {

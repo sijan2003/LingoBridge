@@ -8,7 +8,7 @@ import ProtectedRoute from './components/ProtectedRoute';
 
 function App() {
   return (
-      <Router>
+      <Router future={{ v7_relativeSplatPath: true }}>
         <div className="min-vh-100 bg-light">
           <Routes>
 

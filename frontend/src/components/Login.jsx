@@ -6,8 +6,8 @@ import { Button } from "./ui/button";// relative path
 import {UserPen , Lock, Chrome , Facebook} from "lucide-react";
 import { Link } from "react-router-dom";
 import { AuthContext } from "../context/AuthContext";
-import {getProfile , loginUser} from "../utils/authService";
-import {useLogin} from "../hooks/useLogin";
+import { getProfile } from "../utils/authService";
+import { useLogin } from "../hooks/useLogin";
 
 
 
@@ -16,27 +16,36 @@ const Login = () => {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const navigate = useNavigate();
-  const [error, setError] = useState(null);
-  const [email, setEmail] = useState("");
-  const [isLoading , setIsLoading] = useState(false);
   const { setUser } = useContext(AuthContext);
-  const { login, setLoginUser } = useLogin();
+  const { login, loading: isLoading, error } = useLogin();
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
+    if (e) {
+      e.preventDefault();
+    }
 
     if (!username.trim() || !password.trim()) {
-      alert("Please enter both username and password");
-      return;
+      return; // Error will be shown by the hook
     }
-    console.log("username-password",username , password);
+    
     try {
       await login(username, password);
-      const userProfile = getProfile()
-      setUser(userProfile); // update AuthContext
+      // After successful login, load user profile
+      try {
+        const userProfile = await getProfile();
+        setUser(userProfile.data); // update AuthContext
+      } catch (profileErr) {
+        console.error("Failed to load profile:", profileErr);
+      }
     } catch (err) {
-      console.log(err.message); // error handled in hook
+      // Error is handled by the hook and displayed via error state
+      console.error("Login error:", err);
     }
+  };
+
+  const handleOAuthLogin = (provider) => {
+    // Placeholder for OAuth login
+    alert(`${provider} login is not yet implemented`);
   };
 
 
@@ -81,24 +90,25 @@ const Login = () => {
 
               {/* Login Form */}
               <form onSubmit={handleSubmit} className="space-y-4">
-                {/* Email Input */}
+                {/* Username or Email Input */}
                 <div className="space-y-2">
-                  <label htmlFor="email" className="block flex
-                   gap-2 text-sm font-medium text-slate-200">
-                    Username <UserPen  className=" w-5 h-5 text-slate-500"/>
+                  <label htmlFor="username" className="block flex gap-2 text-sm font-medium text-slate-200">
+                    Username or Email <UserPen className="w-5 h-5 text-slate-500"/>
                   </label>
                   <div className="relative">
-
                     <Input
                         id="username"
                         type="text"
-                        placeholder="Enter Your Username"
+                        placeholder="Enter your username or email"
                         value={username}
                         onChange={(e) => setUsername(e.target.value)}
                         className="pl-10 bg-slate-700/50 border-slate-600 text-white placeholder:text-slate-500 focus:border-blue-500 focus:ring-blue-500/50"
                         disabled={isLoading}
                     />
                   </div>
+                  <p className="text-xs text-slate-500 mt-1">
+                    You can login with either your username or email address
+                  </p>
                 </div>
 
                 {/* Password Input */}
@@ -126,17 +136,27 @@ const Login = () => {
                 {/* Sign In Button */}
                 <Button
                     type="submit"
+                    onClick={handleSubmit}
                     disabled={isLoading}
-                    className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
+                    className="w-full bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white font-semibold py-2.5 rounded-lg transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"
                 >
-                  {isLoading ? "Signing in..." : "Sign In"}
+                  {isLoading ? (
+                    <span className="flex items-center gap-2">
+                      <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></span>
+                      Signing in...
+                    </span>
+                  ) : (
+                    "Sign In"
+                  )}
                 </Button>
               </form>
 
-              <Link href="/forgot-password"
-                    className="text-sm text-blue-400 pt-3 mt-3 hover:text-blue-300 transition-colors">
-                Forgot Password?
-              </Link>
+              <div className="mt-4 text-center">
+                <Link to="/forgot-password"
+                      className="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                  Forgot Password?
+                </Link>
+              </div>
 
               {/* Divider */}
               <div className="my-6 flex items-center gap-4">
@@ -173,7 +193,7 @@ const Login = () => {
           <div className="mt-6 text-center">
             <p className="text-slate-400">
               Don't have an account?{" "}
-              <Link href="/frontend/src/components/Signup" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors" to="/signup">
+              <Link to="/signup" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
                 Sign up here
               </Link>
             </p>
@@ -183,11 +203,11 @@ const Login = () => {
           <div className="mt-8 text-center text-xs text-slate-500">
             <p>
               By signing in, you agree to our{" "}
-              <Link href="/terms" className="text-blue-400 hover:text-blue-300">
+              <Link to="/terms" className="text-blue-400 hover:text-blue-300">
                 Terms of Service
               </Link>{" "}
               and{" "}
-              <Link href="/privacy" className="text-blue-400 hover:text-blue-300">
+              <Link to="/privacy" className="text-blue-400 hover:text-blue-300">
                 Privacy Policy
               </Link>
             </p>

@@ -3,7 +3,6 @@ from django.db.models import Q
 from django.contrib.auth import authenticate, get_user_model
 User = get_user_model()
 
-
 class Friendship(models.Model):
     from_user = models.ForeignKey(User, related_name='friend_requests_sent', on_delete=models.CASCADE)
     to_user = models.ForeignKey(User, related_name='friend_requests_received', on_delete=models.CASCADE)
@@ -22,7 +21,7 @@ class Conversation(models.Model):
 class Message(models.Model):
     sender = models.ForeignKey(User, related_name='messages_sent', on_delete=models.CASCADE)
     receiver = models.ForeignKey(User, related_name='messages_received', on_delete=models.CASCADE)
-    conversation = models.ForeignKey(Conversation, related_name='messages', on_delete=models.CASCADE)
+    conversation = models.ForeignKey(Conversation, related_name='messages', on_delete=models.CASCADE,null=True)
     status = models.CharField(max_length=10, choices=[('sent', 'Sent'), ('delivered', 'Delivered'), ('read', 'Read')], default='sent')
     content = models.TextField()
     translated_content = models.TextField()

@@ -46,15 +46,19 @@ class JWTAuthMiddleware(BaseMiddleware):
                 user = await get_user_from_token(token)
                 if user:
                     scope['user'] = user
+                    # Continue to the next middleware/consumer
+                    return await super().__call__(scope, receive, send)
                 else:
-                    # Close connection if authentication fails
+                    # Reject connection during handshake if authentication fails
+                    print(f"WebSocket authentication failed: Invalid token")
                     await send({
                         'type': 'websocket.close',
                         'code': 4001,  # Unauthorized
                     })
                     return
             else:
-                # No token provided, close connection
+                # No token provided, reject connection
+                print(f"WebSocket authentication failed: No token provided")
                 await send({
                     'type': 'websocket.close',
                     'code': 4001,  # Unauthorized

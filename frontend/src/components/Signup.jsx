@@ -4,8 +4,9 @@ import { useState } from "react"
 import { Card } from "./ui/card"
 import { Input } from "./ui/input";
 import { Button } from "./ui/button"
-import { Mail, Lock, User, Chrome, Facebook } from "lucide-react"
-import { Link } from "react-router-dom";
+import { Mail, Lock, User, Chrome, Facebook, Globe } from "lucide-react"
+import { Link } from "react-router-dom"
+import { registerUser } from "../utils/authService"
 
 
 
@@ -14,6 +15,7 @@ const Signup = () => {
   const [email, setEmail] = useState("")
   const [password, setPassword] = useState("")
   const [confirmPassword, setConfirmPassword] = useState("")
+  const [preferredLanguage, setPreferredLanguage] = useState("en")
   const [error, setError] = useState(null)
   const [isLoading, setIsLoading] = useState(false)
 
@@ -21,7 +23,7 @@ const Signup = () => {
     e.preventDefault()
     setError(null)
 
-    if (!fullName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim()) {
+    if (!fullName.trim() || !email.trim() || !password.trim() || !confirmPassword.trim() || !preferredLanguage) {
       setError("Please fill in all fields")
       return
     }
@@ -38,21 +40,34 @@ const Signup = () => {
 
     try {
       setIsLoading(true)
-      // TODO: Replace with actual API call
-      const res = await fetch("/api/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ fullName, email, password }),
+      // Split fullName into first_name and last_name
+      const nameParts = fullName.trim().split(/\s+/);
+      const first_name = nameParts[0] || '';
+      const last_name = nameParts.slice(1).join(' ') || '';
+      const username = email.split('@')[0]; // Use email prefix as username
+      
+      await registerUser({ 
+        username,
+        email, 
+        password,
+        first_name,
+        last_name,
+        preferred_language: preferredLanguage
       })
-
-      if (!res.ok) {
-        throw new Error("Registration failed")
-      }
 
       // Redirect to login or dashboard
       window.location.href = "/login"
     } catch (err) {
-      setError(err instanceof Error ? err.message : "Registration failed. Please try again.")
+      // Extract error message from API response
+      const errorMessage = err.response?.data?.username?.[0] || 
+                          err.response?.data?.email?.[0] || 
+                          err.response?.data?.password?.[0] ||
+                          err.response?.data?.detail ||
+                          err.response?.data?.error ||
+                          (typeof err.response?.data === 'string' ? err.response.data : null) ||
+                          err.message || 
+                          "Registration failed. Please try again."
+      setError(errorMessage)
     } finally {
       setIsLoading(false)
     }
@@ -165,6 +180,27 @@ const Signup = () => {
                   </div>
                 </div>
 
+                {/* Preferred Language Input */}
+                <div className="space-y-2">
+                  <label htmlFor="preferredLanguage" className="block flex gap-2 text-sm font-medium text-slate-200">
+                    Preferred Language <Globe className="w-5 h-5 text-slate-500" />
+                  </label>
+                  <div className="relative">
+                    <Globe className="absolute left-3 top-1/2 transform -translate-y-1/2 w-5 h-5 text-slate-500 pointer-events-none" />
+                    <select
+                        id="preferredLanguage"
+                        value={preferredLanguage}
+                        onChange={(e) => setPreferredLanguage(e.target.value)}
+                        className="w-full pl-10 pr-4 py-2 bg-slate-700/50 border border-slate-600 text-white rounded-md focus:outline-none focus:border-blue-500 focus:ring-2 focus:ring-blue-500/50 disabled:opacity-50 disabled:cursor-not-allowed appearance-none"
+                        disabled={isLoading}
+                    >
+                      <option value="en" className="bg-slate-800">English</option>
+                      <option value="fr" className="bg-slate-800">French</option>
+                      <option value="es" className="bg-slate-800">Spanish</option>
+                    </select>
+                  </div>
+                </div>
+
                 {/* Sign Up Button */}
                 <Button
                     type="submit"
@@ -210,7 +246,7 @@ const Signup = () => {
           <div className="mt-6 text-center">
             <p className="text-slate-400">
               Already have an account?{" "}
-              <Link href="/frontend/src/components/Login" to="/login" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
+              <Link to="/login" className="text-blue-400 hover:text-blue-300 font-semibold transition-colors">
                 Sign in here
               </Link>
             </p>

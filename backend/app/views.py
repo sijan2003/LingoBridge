@@ -55,12 +55,67 @@ class UserListView(APIView):
         users = User.objects.exclude(id=request.user.id)
         
         if search:
+            # Advanced search algorithm with relevance scoring
+            from django.db.models import Case, When, IntegerField
             users = users.filter(
                 Q(username__icontains=search) | Q(email__icontains=search)
-            )
+            ).annotate(
+                relevance=Case(
+                    # Exact matches get highest score (100)
+                    When(username__iexact=search, then=100),
+                    When(email__iexact=search, then=100),
+                    # Starts with gets high score (80)
+                    When(username__istartswith=search, then=80),
+                    When(email__istartswith=search, then=80),
+                    # Contains gets medium score (50)
+                    When(username__icontains=search, then=50),
+                    When(email__icontains=search, then=50),
+                    default=0,
+                    output_field=IntegerField()
+                )
+            ).order_by('-relevance', 'username')
+        else:
+            # If no search, return all users ordered by username
+            users = users.order_by('username')
         
+        # Exclude users who are already friends or have pending requests
+        from .models import Friendship
+        friend_ids = set()
+        # Get accepted friends
+        friendships = Friendship.objects.filter(
+            (Q(from_user=request.user) | Q(to_user=request.user)),
+            accepted=True
+        )
+        for f in friendships:
+            friend_ids.add(f.to_user.id if f.from_user == request.user else f.from_user.id)
+        
+        # Get pending requests (both sent and received)
+        pending = Friendship.objects.filter(
+            Q(from_user=request.user) | Q(to_user=request.user),
+            accepted=False
+        )
+        for f in pending:
+            friend_ids.add(f.to_user.id if f.from_user == request.user else f.from_user.id)
+        
+        # Add friendship status to each user
         serializer = UserSerializer(users, many=True)
-        return Response(serializer.data)
+        result = []
+        for user_data in serializer.data:
+            user_dict = dict(user_data)
+            user_dict['is_friend'] = user_data['id'] in friend_ids
+            # Check if there's a pending request
+            user_dict['has_pending_request'] = False
+            if user_data['id'] in friend_ids:
+                pending_req = Friendship.objects.filter(
+                    (Q(from_user=request.user, to_user_id=user_data['id']) | 
+                     Q(from_user_id=user_data['id'], to_user=request.user)),
+                    accepted=False
+                ).first()
+                user_dict['has_pending_request'] = pending_req is not None
+                user_dict['request_sent_by_me'] = pending_req.from_user == request.user if pending_req else False
+            result.append(user_dict)
+        
+        return Response(result)
 
 class FriendsView(APIView):
     permission_classes = [IsAuthenticated]

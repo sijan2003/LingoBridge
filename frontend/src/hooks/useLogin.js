@@ -8,18 +8,23 @@ export const useLogin = () => {
     const navigate = useNavigate();
 
     const login = async (username, password) => {
+        if (!username.trim() || !password.trim()) {
+            setError("Please enter both username/email and password");
+            return;
+        }
+        
         try {
-
-            const payload = {
-                username: username,
-                password: password
-            }
             setLoading(true);
             setError(null);
-            await loginUser(payload);
+            await loginUser({ username, password });
             navigate("/dashboard");
         } catch (err) {
-            setError(err.response?.data?.detail || err.message || "Login failed");
+            const errorMessage = err.response?.data?.detail || 
+                              err.response?.data?.error || 
+                              err.message || 
+                              "Login failed. Please check your username and password.";
+            setError(errorMessage);
+            throw err; // Re-throw so component can handle it
         } finally {
             setLoading(false);
         }
