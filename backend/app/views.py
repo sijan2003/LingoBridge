@@ -3,6 +3,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated, AllowAny
 from django.db.models import Q
+from collections import deque
 from .models import User, Friendship, Message
 from .serializers import UserSerializer, FriendshipSerializer, MessageSerializer
 
@@ -245,3 +246,110 @@ class MessagesView(APIView):
             data.append(msg_data)
         
         return Response(data)
+
+class FriendRecommendationsView(APIView):
+    """
+    BFS-based friend recommendation algorithm.
+    Finds friends-of-friends who aren't already friends or have pending requests.
+    Uses Breadth-First Search to traverse the friendship graph.
+    """
+    permission_classes = [IsAuthenticated]
+    
+    def get(self, request):
+        from collections import defaultdict
+        
+        user = request.user
+        max_depth = 2  # Friends of friends (distance 2)
+        max_recommendations = 10
+        
+        # Build adjacency list for friendship graph
+        # Get all accepted friendships
+        friendships = Friendship.objects.filter(accepted=True)
+        
+        # Create graph: user_id -> set of friend_ids
+        graph = defaultdict(set)
+        for friendship in friendships:
+            graph[friendship.from_user.id].add(friendship.to_user.id)
+            graph[friendship.to_user.id].add(friendship.from_user.id)
+        
+        # Get users to exclude (already friends, pending requests, or self)
+        exclude_ids = {user.id}
+        
+        # Add direct friends
+        if user.id in graph:
+            exclude_ids.update(graph[user.id])
+        
+        # Add users with pending requests
+        pending = Friendship.objects.filter(
+            Q(from_user=user) | Q(to_user=user),
+            accepted=False
+        )
+        for f in pending:
+            exclude_ids.add(f.to_user.id if f.from_user == user else f.from_user.id)
+        
+        # BFS Algorithm to find friends-of-friends
+        # Queue: (user_id, depth, mutual_friends_count)
+        queue = deque([(user.id, 0)])
+        visited = {user.id}
+        recommendations = defaultdict(int)  # user_id -> mutual friends count
+        
+        while queue:
+            current_user_id, depth = queue.popleft()
+            
+            # Only traverse up to max_depth
+            if depth >= max_depth:
+                continue
+            
+            # Get neighbors (friends) of current user
+            if current_user_id not in graph:
+                continue
+            
+            for friend_id in graph[current_user_id]:
+                # Skip if already visited or excluded
+                if friend_id in exclude_ids:
+                    continue
+                
+                # If at depth 1 (friend), continue BFS to find their friends
+                if depth == 0:
+                    # This is a direct friend, explore their friends
+                    if friend_id not in visited:
+                        visited.add(friend_id)
+                        queue.append((friend_id, depth + 1))
+                
+                # If at depth 1 (we're exploring a friend's friends)
+                elif depth == 1:
+                    # This is a friend-of-friend (recommendation candidate)
+                    if friend_id not in exclude_ids:
+                        # Count mutual friends
+                        mutual_friends = len(graph[user.id] & graph[friend_id])
+                        recommendations[friend_id] = max(recommendations[friend_id], mutual_friends)
+        
+        # Sort recommendations by mutual friends count (descending)
+        sorted_recommendations = sorted(
+            recommendations.items(),
+            key=lambda x: x[1],
+            reverse=True
+        )[:max_recommendations]
+        
+        # Get user objects and serialize
+        recommended_user_ids = [user_id for user_id, _ in sorted_recommendations]
+        recommended_users = User.objects.filter(id__in=recommended_user_ids)
+        
+        # Create a map for mutual friends count
+        mutual_friends_map = dict(sorted_recommendations)
+        
+        serializer = UserSerializer(recommended_users, many=True)
+        result = []
+        for user_data in serializer.data:
+            user_dict = dict(user_data)
+            user_dict['mutual_friends_count'] = mutual_friends_map.get(user_data['id'], 0)
+            result.append(user_dict)
+        
+        # Sort result to maintain order by mutual friends
+        result.sort(key=lambda x: x['mutual_friends_count'], reverse=True)
+        
+        return Response({
+            'recommendations': result,
+            'algorithm': 'BFS (Breadth-First Search)',
+            'description': 'Finds friends-of-friends using graph traversal, ranked by mutual friends'
+        })
