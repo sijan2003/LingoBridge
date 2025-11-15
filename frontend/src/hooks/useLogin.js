@@ -1,34 +1,30 @@
+// useLogin.js
+import axios from "axios";
 import { useState } from "react";
-import { useNavigate } from "react-router-dom";
-import { loginUser } from "../utils/authService";
 
 export const useLogin = () => {
-    const [loading, setLoading] = useState(false);
-    const [error, setError] = useState(null);
-    const navigate = useNavigate();
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState(null);
 
-    const login = async (username, password) => {
-        if (!username.trim() || !password.trim()) {
-            setError("Please enter both username/email and password");
-            return;
-        }
-        
-        try {
-            setLoading(true);
-            setError(null);
-            await loginUser({ username, password });
-            navigate("/dashboard");
-        } catch (err) {
-            const errorMessage = err.response?.data?.detail || 
-                              err.response?.data?.error || 
-                              err.message || 
-                              "Login failed. Please check your username and password.";
-            setError(errorMessage);
-            throw err; // Re-throw so component can handle it
-        } finally {
-            setLoading(false);
-        }
-    };
+  const login = async (username, password) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await axios.post("/api/token/", { username, password });
+      // Save tokens etc.
+      return response.data;
+    } catch (err) {
+      const backendMessage = err.response?.data?.detail ||
+                             err.response?.data?.non_field_errors?.[0] ||
+                             err.response?.data?.error ||
+                             err.message ||
+                             "Login failed";
+      setError(backendMessage);
+      throw err; // optional, if you want parent to handle it
+    } finally {
+      setLoading(false);
+    }
+  };
 
-    return { login, loading, error };
+  return { login, loading, error };
 };
